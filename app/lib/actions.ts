@@ -61,22 +61,27 @@ export async function createInvoice(prevState: State, formData: FormData) {
     redirect('/dashboard/invoices')
 }
 
-export async function updateInvoice(id: string, formData: FormData){
-    const { customerId, amount, status } = UpdateInvoice.parse({
+export async function updateInvoice( id: string, prevState: State, formData: FormData){
+    const validatedFields = UpdateInvoice.safeParse({
         customerId: formData.get('customerId'),
         amount: formData.get('amount'),
         status: formData.get('status'),
-      });
-     
-      const amountInCents = amount * CentsInADollar;
+    });
+    
+    if (!validatedFields.success){
+      console.log("err ", validatedFields.error.flatten().fieldErrors)
+      return {errors: validatedFields.error.flatten().fieldErrors,
+            message: 'Missing Fields. Failed to Create Invoice'
+        }
+    }
+    const { customerId, amount, status } = validatedFields.data
+    const amountInCents = amount * CentsInADollar;
     try{
         await sql`
         UPDATE invoices
         SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
         WHERE id = ${id}
       `;
-     
-      
     } catch(err){
         return {message: 'Database Error: Failed To Update Invoice'}
     }
